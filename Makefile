@@ -1,6 +1,5 @@
 # Image URL to use all building/pushing image targets
-#IMG ?= fluxcd/notification-controller:latest
-IMG ?= gdasson/notification-controller:v1.0.1-dev
+IMG ?= fluxcd/notification-controller:latest
 # Produce CRDs that work back to Kubernetes 1.16
 CRD_OPTIONS ?= crd:crdVersions=v1
 SOURCE_VER ?= v1.0.0-rc.3
