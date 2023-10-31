@@ -47,6 +47,23 @@ func parseGitAddress(s string) (string, string, error) {
 	return host, id, nil
 }
 
+func parseBitbucketServerGitAddress(s string) (string, string, error) {
+	u, err := giturls.Parse(s)
+	if err != nil {
+		return "", "", fmt.Errorf("failed parsing URL %q: %w", s, err)
+	}
+
+	scheme := u.Scheme
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return "", "", fmt.Errorf("Unsupported git scheme %s in address %q. Please provide address in http/https format for BitbucketServer provider", u.Scheme, s)
+	}
+
+	id := strings.TrimPrefix(u.Path, "/scm/") //https://community.atlassian.com/t5/Bitbucket-questions/remote-url-in-Bitbucket-server-what-does-scm-represent-is-it/qaq-p/2060987
+	id = strings.TrimSuffix(id, ".git")
+	host := fmt.Sprintf("%s://%s", scheme, u.Host)
+	return host, id, nil
+}
+
 func formatNameAndDescription(event eventv1.Event) (string, string) {
 	name := fmt.Sprintf("%v/%v", event.InvolvedObject.Kind, event.InvolvedObject.Name)
 	name = strings.ToLower(name)

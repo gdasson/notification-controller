@@ -30,7 +30,7 @@ const (
 // ProviderSpec defines the desired state of Provider
 type ProviderSpec struct {
 	// Type of provider
-	// +kubebuilder:validation:Enum=slack;discord;msteams;rocket;generic;generic-hmac;github;gitlab;bitbucket;azuredevops;googlechat;webex;sentry;azureeventhub;telegram;lark;matrix;opsgenie;alertmanager;grafana;githubdispatch;
+	// +kubebuilder:validation:Enum=slack;discord;msteams;rocket;generic;generic-hmac;github;gitlab;bitbucketserver;bitbucket;azuredevops;googlechat;webex;sentry;azureeventhub;telegram;lark;matrix;opsgenie;alertmanager;grafana;githubdispatch
 	// +required
 	Type string `json:"type"`
 
@@ -77,27 +77,28 @@ type ProviderSpec struct {
 }
 
 const (
-	GenericProvider        string = "generic"
-	GenericHMACProvider    string = "generic-hmac"
-	SlackProvider          string = "slack"
-	GrafanaProvider        string = "grafana"
-	DiscordProvider        string = "discord"
-	MSTeamsProvider        string = "msteams"
-	RocketProvider         string = "rocket"
-	GitHubDispatchProvider string = "githubdispatch"
-	GitHubProvider         string = "github"
-	GitLabProvider         string = "gitlab"
-	BitbucketProvider      string = "bitbucket"
-	AzureDevOpsProvider    string = "azuredevops"
-	GoogleChatProvider     string = "googlechat"
-	WebexProvider          string = "webex"
-	SentryProvider         string = "sentry"
-	AzureEventHubProvider  string = "azureeventhub"
-	TelegramProvider       string = "telegram"
-	LarkProvider           string = "lark"
-	Matrix                 string = "matrix"
-	OpsgenieProvider       string = "opsgenie"
-	AlertManagerProvider   string = "alertmanager"
+	GenericProvider         string = "generic"
+	GenericHMACProvider     string = "generic-hmac"
+	SlackProvider           string = "slack"
+	GrafanaProvider         string = "grafana"
+	DiscordProvider         string = "discord"
+	MSTeamsProvider         string = "msteams"
+	RocketProvider          string = "rocket"
+	GitHubDispatchProvider  string = "githubdispatch"
+	GitHubProvider          string = "github"
+	GitLabProvider          string = "gitlab"
+	BitbucketServerProvider string = "bitbucketserver"
+	BitbucketProvider       string = "bitbucket"
+	AzureDevOpsProvider     string = "azuredevops"
+	GoogleChatProvider      string = "googlechat"
+	WebexProvider           string = "webex"
+	SentryProvider          string = "sentry"
+	AzureEventHubProvider   string = "azureeventhub"
+	TelegramProvider        string = "telegram"
+	LarkProvider            string = "lark"
+	Matrix                  string = "matrix"
+	OpsgenieProvider        string = "opsgenie"
+	AlertManagerProvider    string = "alertmanager"
 )
 
 // ProviderStatus defines the observed state of Provider
