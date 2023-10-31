@@ -46,10 +46,11 @@ type ProviderSpec struct {
 }
 ```
 
+
 Notification providers:
 
-| Provider                  | Type           |
-| ------------------------- | -------------- |
+| Provider        | Type           |
+| --------------- | -------------- |
 | Alertmanager              | alertmanager   |
 | Azure Event Hub           | azureeventhub  |
 | Discord                   | discord        |
@@ -70,13 +71,12 @@ Notification providers:
 
 Git commit status providers:
 
-| Provider         | Type            |
-| ---------------- | --------------- |
-| Azure DevOps     | azuredevops     |
-| Bitbucket        | bitbucket       |
-| Bitbucket Server | bitbucketserver |
-| GitHub           | github          |
-| GitLab           | gitlab          |
+| Provider     | Type        |
+| ------------ | ----------- |
+| Azure DevOps | azuredevops |
+| Bitbucket    | bitbucket   |
+| GitHub       | github      |
+| GitLab       | gitlab      |
 
 Status:
 
@@ -168,19 +168,19 @@ The body of the request looks like this:
 ```json
 {
   "involvedObject": {
-    "kind": "GitRepository",
-    "namespace": "flux-system",
-    "name": "flux-system",
-    "uid": "cc4d0095-83f4-4f08-98f2-d2e9f3731fb9",
-    "apiVersion": "source.toolkit.fluxcd.io/v1beta2",
-    "resourceVersion": "56921"
+    "kind":"GitRepository",
+    "namespace":"flux-system",
+    "name":"flux-system",
+    "uid":"cc4d0095-83f4-4f08-98f2-d2e9f3731fb9",
+    "apiVersion":"source.toolkit.fluxcd.io/v1beta2",
+    "resourceVersion":"56921",
   },
-  "severity": "info",
-  "timestamp": "2006-01-02T15:04:05Z",
-  "message": "Fetched revision: main/731f7eaddfb6af01cb2173e18f0f75b0ba780ef1",
-  "reason": "info",
-  "reportingController": "source-controller",
-  "reportingInstance": "source-controller-7c7b47f5f-8bhrp"
+  "severity":"info",
+  "timestamp":"2006-01-02T15:04:05Z",
+  "message":"Fetched revision: main/731f7eaddfb6af01cb2173e18f0f75b0ba780ef1",
+  "reason":"info",
+  "reportingController":"source-controller",
+  "reportingInstance":"source-controller-7c7b47f5f-8bhrp",
 }
 ```
 
@@ -208,8 +208,8 @@ metadata:
   namespace: default
 stringData:
   headers: |
-    Authorization: token
-    X-Forwarded-Proto: https
+     Authorization: token
+     X-Forwarded-Proto: https
 ```
 
 ### Generic webhook with HMAC
@@ -280,8 +280,8 @@ It is possible to use a Slack App bot integration to send messages. To obtain a 
 
 Differences from the Slack [webhook method](#notifications):
 
-- Possible to use single credentials to post to different channels (by adding the integration to each channel)
-- All messages are posted with the app username, and not the name of the controller (e.g. `helm-controller`, `source-controller`)
+* Possible to use single credentials to post to different channels (by adding the integration to each channel)
+* All messages are posted with the app username, and not the name of the controller (e.g. `helm-controller`, `source-controller`)
 
 To enable the Slack App, the secret must contain the URL of the [chat.postMessage](https://api.slack.com/methods/chat.postMessage)
 method and your Slack bot token (starts with `xoxb-`):
@@ -390,7 +390,6 @@ For Matrix, the address is the homeserver URL and the token is the access token
 returned by a call to `/login` or `/register`.
 
 Create a secret:
-
 ```
 kubectl create secret generic matrix-token \
 --from-literal=token=<access-token> \
@@ -489,8 +488,9 @@ If a summary is provided in the alert resource an additional "summary" annotatio
 
 The provider will send the following labels for the event.
 
+
 | Label     | Description                                                                                          |
-| --------- | ---------------------------------------------------------------------------------------------------- |
+|-----------|------------------------------------------------------------------------------------------------------|
 | alertname | The string Flux followed by the Kind and the reason for the event e.g `FluxKustomizationProgressing` |
 | severity  | The severity of the event (`error` or `info`)                                                        |
 | timestamp | The timestamp of the event                                                                           |
@@ -504,16 +504,15 @@ The provider will send the following labels for the event.
 General steps on how to hook up Flux notifications to a Webex space:
 
 From the Webex App UI:
-
 - create a Webex space where you want notifications to be sent
 - after creating a Webex bot (described in next section), add the bot email address to the Webex space ("People | Add people")
 
 Register to https://developer.webex.com/, after signing in:
-
 - create a bot for forwarding FluxCD notifications to a Webex Space (User profile icon | MyWebexApps | Create a New App | Create a Bot)
 - make a note of the bot email address, this email needs to be added to the Webex space from the Webex App
 - generate a bot access token, this is the ID to use in the kubernetes Secret "token" field (see example below)
 - find the room ID associated to the webex space using https://developer.webex.com/docs/api/v1/rooms/list-rooms (select GET, click on "Try It" and search the GET results for the matching Webex space entry), this is the ID to use in the webex Provider manifest "channel" field
+
 
 Manifests template to use:
 
@@ -545,10 +544,9 @@ Notes:
 - spec.address should always be set to the same global Webex API gateway https://webexapis.com/v1/messages
 - spec.channel should contain the Webex space room ID as obtained from https://developer.webex.com/ (long alphanumeric string copied as is)
 - token in the Secret manifest is the bot access token generated after creating the bot (as for all secrets, must be base64 encoded using for example
-  "echo -n <token> | base64")
+"echo -n <token> | base64")
 
 If you do not see any notifications in the targeted Webex space:
-
 - check that you have applied an Alert with the right even sources and providerRef
 - check the notification controller log for any error messages
 - check that you have added the bot email address to the Webex space, if the bot email address is not added to the space, the notification controller will log a 404 room not found error every time a notification is sent out
@@ -587,16 +585,17 @@ spec:
   eventSeverity: info
   eventSources:
     - kind: GitRepository
-      name: "*"
+      name: '*'
     - kind: HelmRelease
-      name: "*"
+      name: '*'
     - kind: HelmRepository
-      name: "*"
+      name: '*'
     - kind: Kustomization
-      name: "*"
+      name: '*'
     - kind: OCIRepository
-      name: "*"
+      name: '*'
 ```
+
 
 ### Grafana
 
@@ -607,7 +606,6 @@ you have to enable the annotations on a Dashboard like so:
 - Annotations > Query > Tags (Add Tag: `flux`)
 
 If Grafana has authentication configured, create a Kubernetes Secret with the API URL and the API token:
-
 ```shell
 kubectl create secret generic grafana-token \
 --from-literal=token=<grafana-api-key> \
@@ -616,7 +614,6 @@ kubectl create secret generic grafana-token \
 
 Grafana can also use `basic authorization` to authenticate the requests, if both token and
 username/password are set in the secret, then `API token` takes precedence over `basic auth`.
-
 ```shell
 kubectl create secret generic grafana-token \
 --from-literal=username=<your-grafana-username> \
@@ -639,7 +636,7 @@ spec:
 
 ### Git commit status
 
-The GitHub, GitLab, Bitbucket, Bitbucket Server, and Azure DevOps provider will write to the
+The GitHub, GitLab, Bitbucket, and Azure DevOps provider will write to the
 commit status in the git repository from which the event originates from.
 
 {{% alert color="info" title="Limitations" %}}
@@ -668,7 +665,6 @@ For bitbucket, the token should contain the username and [app password](https://
 in the format `<username>:<password>`. The app password should have `Repositories (Read/Write)` permission.
 
 You can create the secret using this command:
-
 ```shell
 kubectl create secret generic api-token --from-literal=token=<username>:<app-password>
 ```
@@ -708,50 +704,6 @@ data:
   token: <username>:<app-password>
 ```
 
-For bitbucketserver (a.k.a. Bitbucket Data Center), the following auth methods are available: <br /> a) Basic Auth(username/password)
-<br />
-b) [HTTP access tokens](https://confluence.atlassian.com/bitbucketserver/http-access-tokens-939515499.html)
-
-For Basic Auth(username/password), the secret should be created in following format:
-
-```
-apiVersion: v1
-data:
-  password: Qml0YnVja2V0QDIwMjM=
-  username: Zm9vYmFydXNlcg==
-kind: Secret
-metadata:
-  name: bb-server-username-password
-type: Opaque
-```
-
-You may create the secret using this command as well:
-
-```shell
-kubectl create secret generic bb-server-username-password --from-literal=username=<username> --from-literal=password=<password>
-```
-
-For HTTP access tokens, the secret should be created in following format:
-
-```
-apiVersion: v1
-data:
-  token: QkJEQy1PREl4T0RZeE16SXlOelV5T3R0b3JNak8wNTlQMnJZVGI2RUg3bVBPTTVUbw==
-kind: Secret
-metadata:
-  name: bb-server-token
-type: Opaque
-```
-
-You may create the secret using this command as well:
-
-```shell
-kubectl create secret generic bb-server-token --from-literal=token=<token>
-```
-
-The HTTP access token must have `Repositories (Read/Write)` permission for
-the repository specified in `.spec.address`.
-
 Opsgenie uses an api key to authenticate [api key](https://support.atlassian.com/opsgenie/docs/api-key-management/).
 The providers require a secret in the same format, with the api key as the value for the token key:
 
@@ -775,9 +727,9 @@ and [SAS](https://docs.microsoft.com/en-us/azure/event-hubs/authorize-access-sha
 In JWT we use 3 input values. Channel, token and address.
 We perform the following translation to match we the data we need to communicate with Azure Event Hub.
 
-- channel = Azure Event Hub namespace
-- address = Azure Event Hub name
-- token = JWT
+* channel = Azure Event Hub namespace
+* address = Azure Event Hub name
+* token   = JWT
 
 ```yaml
 apiVersion: notification.toolkit.fluxcd.io/v1beta1
@@ -870,32 +822,30 @@ The `githubdispatch` provider generates GitHub events of type [`repository_dispa
 
 The request includes the `event_type` and `client_payload` fields:
 
-- The `event_type` is generated by GitHub Dispatch provider by combining the Kind, Name and Namespace of the involved object in the format `{Kind}/{Name}.{Namespace}`. For example, the `event_type` for a Flux Kustomization named `podinfo` in the `flux-system` namespace looks like this: `Kustomization/podinfo.flux-system`.
+* The `event_type` is generated by GitHub Dispatch provider by combining the Kind, Name and Namespace of the involved object in the format `{Kind}/{Name}.{Namespace}`. For example, the `event_type` for a Flux Kustomization named `podinfo` in the `flux-system` namespace looks like this: `Kustomization/podinfo.flux-system`.
 
-- The `client_payload` contains the Kubernetes event issued by Flux, e.g.:
+* The `client_payload` contains the Kubernetes event issued by Flux, e.g.:
 
 ```yaml
 {
-  involvedObject:
-    {
-      apiVersion: kustomize.toolkit.fluxcd.io/v1beta2,
-      kind: Kustomization,
-      name: podinfo,
-      namespace: flux-system,
-      resourceVersion: 426573,
-      uid: b9b8554d-be26-4a3d-a97f-65f3276a097a,
-    },
+  involvedObject: {
+    apiVersion: kustomize.toolkit.fluxcd.io/v1beta2,
+    kind: Kustomization,
+    name: podinfo,
+    namespace: flux-system,
+    resourceVersion: 426573,
+    uid: b9b8554d-be26-4a3d-a97f-65f3276a097a
+  },
   message: Deployment/podinfo/podinfo configured,
-  metadata:
-    {
-      revision: main/96139968ca46b53462d1bf94de410a811d2026a1,
-      summary: "staging (us-west-2)",
-    },
+  metadata: {
+    revision: main/96139968ca46b53462d1bf94de410a811d2026a1,
+    summary: "staging (us-west-2)"
+  },
   reason: Progressing,
   reportingController: kustomize-controller,
   reportingInstance: kustomize-controller-79464d8dc5-nb9c4,
   severity: info,
-  timestamp: 2022-04-20T12:20:28Z,
+  timestamp: 2022-04-20T12:20:28Z
 }
 ```
 
@@ -918,7 +868,7 @@ The `address` is the address of your repository where you want to send webhooks 
 
 GitHub uses personal access tokens for authentication with its API:
 
-- [GitHub personal access token](https://docs.github.com/en/free-pro-team@latest/github/authenticating-to-github/creating-a-personal-access-token)
+* [GitHub personal access token](https://docs.github.com/en/free-pro-team@latest/github/authenticating-to-github/creating-a-personal-access-token)
 
 The provider requires a secret in the same format, with the personal access token as the value for the token key:
 
@@ -986,7 +936,7 @@ spec:
   eventSeverity: info
   eventSources:
     - kind: Kustomization
-      name: "podinfo"
+      name: 'podinfo'
 ```
 
 Now you can the trigger tests in the GitHub workflow for app1 in a staging cluster when the app1 resources defined in `./app1/staging/` are reconciled by Flux:
@@ -1001,6 +951,6 @@ jobs:
     if: github.event.client_payload.metadata.summary == 'staging (us-west-2)'
     runs-on: ubuntu-18.04
     steps:
-      - name: Run tests
-        run: echo "running tests.."
+    - name: Run tests
+      run: echo "running tests.."
 ```

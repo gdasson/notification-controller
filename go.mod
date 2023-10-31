@@ -12,7 +12,6 @@ require (
 	github.com/Azure/azure-event-hubs-go/v3 v3.6.1
 	github.com/DataDog/datadog-api-client-go/v2 v2.15.0
 	github.com/PagerDuty/go-pagerduty v1.7.0
-	github.com/antihax/optional v1.0.0
 	github.com/containrrr/shoutrrr v0.8.0
 	github.com/fluxcd/notification-controller/api v1.1.0
 	github.com/fluxcd/pkg/apis/event v0.5.2
@@ -21,7 +20,6 @@ require (
 	github.com/fluxcd/pkg/masktoken v0.2.0
 	github.com/fluxcd/pkg/runtime v0.42.0
 	github.com/fluxcd/pkg/ssa v0.32.0
-	github.com/gdasson/bitbucketv1go v1.0.0
 	github.com/getsentry/sentry-go v0.23.0
 	github.com/go-logr/logr v1.2.4
 	github.com/google/go-github/v53 v53.2.0
@@ -35,7 +33,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/whilp/git-urls v1.0.0
 	github.com/xanzy/go-gitlab v0.90.0
-	golang.org/x/oauth2 v0.13.0
+	golang.org/x/oauth2 v0.11.0
 	golang.org/x/text v0.13.0
 	google.golang.org/api v0.138.0
 	k8s.io/api v0.27.4
@@ -144,6 +142,7 @@ require (
 	golang.org/x/sys v0.13.0 // indirect
 	golang.org/x/term v0.13.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
+	golang.org/x/tools v0.13.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.3.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20230803162519-f966b187b2e5 // indirect

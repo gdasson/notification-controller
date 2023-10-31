@@ -35,9 +35,9 @@ spec:
   eventSeverity: error
   eventSources:
     - kind: HelmRepository
-      name: "*"
+      name: '*'
     - kind: HelmRelease
-      name: "*"
+      name: '*'
 ```
 
 In the above example:
@@ -105,7 +105,7 @@ A Provider also needs a
 The supported alerting providers are:
 
 | Provider                                                | Type             |
-| ------------------------------------------------------- | ---------------- |
+|---------------------------------------------------------|------------------|
 | [Generic webhook](#generic-webhook)                     | `generic`        |
 | [Generic webhook with HMAC](#generic-webhook-with-hmac) | `generic-hmac`   |
 | [Azure Event Hub](#azure-event-hub)                     | `azureeventhub`  |
@@ -129,14 +129,14 @@ The supported alerting providers are:
 
 The supported providers for [Git commit status updates](#git-commit-status-updates) are:
 
-| Provider                            | Type              |
-| ----------------------------------- | ----------------- |
-| [Azure DevOps](#azure-devops)       | `azuredevops`     |
-| [Bitbucket](#bitbucket)             | `bitbucket`       |
-| [BitbucketServer](#bitbucketserver) | `bitbucketserver` |
-| [GitHub](#github)                   | `github`          |
-| [GitLab](#gitlab)                   | `gitlab`          |
-| [Gitea](#gitea)                     | `gitea`           |
+| Provider                                        | Type              |
+| ------------------------------------------------| ----------------- |
+| [Azure DevOps](#azure-devops)                   | `azuredevops`     |
+| [Bitbucket](#bitbucket)                         | `bitbucket`       |
+| [BitbucketServer](#bitbucket-serverdata-center) | `bitbucketserver` |
+| [GitHub](#github)                               | `github`          |
+| [GitLab](#gitlab)                               | `gitlab`          |
+| [Gitea](#gitea)                                 | `gitea`           |
 
 #### Alerting
 
@@ -160,12 +160,12 @@ for example:
   "metadata": {
     "kustomize.toolkit.fluxcd.io/revision": "main/731f7eaddfb6af01cb2173e18f0f75b0ba780ef1"
   },
-  "severity": "error",
+  "severity":"error",
   "reason": "ValidationFailed",
-  "message": "service/apps/webapp validation error: spec.type: Unsupported value: Ingress",
-  "reportingController": "kustomize-controller",
-  "reportingInstance": "kustomize-controller-7c7b47f5f-8bhrp",
-  "timestamp": "2022-10-28T07:26:19Z"
+  "message":"service/apps/webapp validation error: spec.type: Unsupported value: Ingress",
+  "reportingController":"kustomize-controller",
+  "reportingInstance":"kustomize-controller-7c7b47f5f-8bhrp",
+  "timestamp":"2022-10-28T07:26:19Z"
 }
 ```
 
@@ -284,7 +284,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 ##### Slack
 
 When `.spec.type` is set to `slack`, the controller will send a message for an
-[Event](events.md#event-structure) to the provided Slack API [Address](#address).
+[Event](events.md#event-structure) to the provided Slack API [Address](#address). 
 
 The Event will be formatted into a Slack message using an [Attachment](https://api.slack.com/reference/messaging/attachments),
 with the metadata attached as fields, and the involved object as author.
@@ -335,7 +335,7 @@ metadata:
   name: slack-token
   namespace: default
 stringData:
-  token: xoxb-1234567890-1234567890-1234567890-1234567890
+    token: xoxb-1234567890-1234567890-1234567890-1234567890
 ```
 
 ###### Slack (legacy) example
@@ -404,7 +404,7 @@ metadata:
   name: msteams-webhook
   namespace: default
 stringData:
-  address: "https://xxx.webhook.office.com/..."
+    address: "https://xxx.webhook.office.com/..."
 ```
 
 ##### DataDog
@@ -500,8 +500,9 @@ metadata:
   name: discord-webhook
   namespace: default
 stringData:
-  address: "https://discord.com/api/webhooks/..."
+    address: "https://discord.com/api/webhooks/..."
 ```
+
 
 ##### Sentry
 
@@ -595,7 +596,7 @@ spec:
 When `.spec.type` is set to `matrix`, the controller will send a payload for
 an [Event](events.md#event-structure) to the provided Matrix [Address](#address).
 
-The Event will be formatted into a message string, with the metadata attached
+The Event will be formatted into a message string, with the metadata attached 
 as a list of key-value pairs, and send as a [`m.room.message` text event](https://spec.matrix.org/v1.3/client-server-api/#mroommessage)
 to the provided Matrix [Address](#address).
 
@@ -659,7 +660,7 @@ metadata:
   name: lark-webhook
   namespace: default
 stringData:
-  address: "https://open.larksuite.com/open-apis/bot/v2/hook/xxxxxxxxxxxxxxxxx"
+    address: "https://open.larksuite.com/open-apis/bot/v2/hook/xxxxxxxxxxxxxxxxx"
 ```
 
 ##### Rocket
@@ -827,7 +828,7 @@ metadata:
   name: opsgenie-token
   namespace: default
 stringData:
-  token: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    token: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
 ##### PagerDuty
@@ -869,7 +870,6 @@ spec:
   address: https://events.pagerduty.com
   channel: <integrationKey>
 ```
-
 If you are sending to a service integration, it is recommended to set your Alert to filter to
 only those sources you want to trigger an incident for that service. For example:
 
@@ -903,7 +903,7 @@ with the metadata added to the `labels` fields, and the `message` (and optional
 In addition to the metadata from the Event, the following labels will be added:
 
 | Label     | Description                                                                                          |
-| --------- | ---------------------------------------------------------------------------------------------------- |
+|-----------|------------------------------------------------------------------------------------------------------|
 | alertname | The string Flux followed by the Kind and the reason for the event e.g `FluxKustomizationProgressing` |
 | severity  | The severity of the event (`error` or `info`)                                                        |
 | timestamp | The timestamp of the event                                                                           |
@@ -941,7 +941,7 @@ metadata:
   name: alertmanager-address
   namespace: default
 stringData:
-  address: https://username:password@<alertmanager-url>/api/v2/alerts/"
+    address: https://username:password@<alertmanager-url>/api/v2/alerts/"
 ```
 
 ##### Webex
@@ -999,7 +999,7 @@ The meaning of endpoint here depends on the specific Provider type being used.
 For the `generic` Provider for example this is an HTTP/S address.
 For other Provider types this could be a project ID or a namespace.
 
-If the address contains sensitive information such as tokens or passwords, it is
+If the address contains sensitive information such as tokens or passwords, it is 
 recommended to store the address in the Kubernetes secret referenced by `.spec.secretRef.name`.
 When the referenced Secret contains an `address` key, the `.spec.address` value is ignored.
 
@@ -1153,6 +1153,7 @@ When the field is set to `false` or removed, it will resume.
 
 ## Working with Providers
 
+
 ### Grafana
 
 To send notifications to [Grafana annotations API](https://grafana.com/docs/grafana/latest/http_api/annotations/),
@@ -1223,7 +1224,7 @@ The `address` is the address of your repository where you want to send webhooks 
 
 GitHub uses personal access tokens for authentication with its API:
 
-- [GitHub personal access token](https://docs.github.com/en/free-pro-team@latest/github/authenticating-to-github/creating-a-personal-access-token)
+* [GitHub personal access token](https://docs.github.com/en/free-pro-team@latest/github/authenticating-to-github/creating-a-personal-access-token)
 
 The provider requires a secret in the same format, with the personal access token as the value for the token key:
 
@@ -1297,7 +1298,7 @@ spec:
   eventSeverity: info
   eventSources:
     - kind: Kustomization
-      name: "podinfo"
+      name: 'podinfo'
 ```
 
 Now you can the trigger tests in the GitHub workflow for app1 in a staging cluster when
@@ -1313,8 +1314,8 @@ jobs:
     if: github.event.client_payload.metadata.summary == 'staging (us-west-2)'
     runs-on: ubuntu-18.04
     steps:
-      - name: Run tests
-        run: echo "running tests.."
+    - name: Run tests
+      run: echo "running tests.."
 ```
 
 ### Azure Event Hub
@@ -1328,8 +1329,8 @@ In JWT we use 3 input values. Channel, token and address.
 We perform the following translation to match we the data we need to communicate with Azure Event Hub.
 
 - channel = Azure Event Hub namespace
-- address = Azure Event Hub name
-- token = JWT
+- address = Azure Event Hub name 
+- token   = JWT
 
 ```yaml
 ---
@@ -1484,11 +1485,11 @@ kubectl create secret generic gitlab-token --from-literal=token=<GITLAB-TOKEN>
 When `.spec.type` is set to `gitea`, the referenced secret must contain a key called `token` with the value set to a
 [Gitea token](https://docs.gitea.io/en-us/api-usage/#generating-and-listing-api-tokens).
 
-The token must have at least the `write:repository` permission for the provider to
+The token must have at least the `write:repository` permission for the provider to 
 update the commit status for the Gitea repository specified in `.spec.address`.
 
 {{% alert color="info" title="Gitea 1.20.0 & 1.20.1" %}}
-Due to a bug in Gitea 1.20.0 and 1.20.1, these versions require the additional
+Due to a bug in Gitea 1.20.0 and 1.20.1, these versions require the additional 
 `read:misc` scope to be applied to the token.
 {{% /alert %}}
 
@@ -1514,44 +1515,22 @@ You can create the secret with `kubectl` like this:
 kubectl create secret generic bitbucket-token --from-literal=token=<username>:<app-password>
 ```
 
-#### BitBucketServer
+#### BitBucket Server/Data Center
 
-For bitbucketserver (a.k.a. Bitbucket Data Center), the following auth methods are available: <br /> a) Basic Auth(username/password)
-<br />
-b) [HTTP access tokens](https://confluence.atlassian.com/bitbucketserver/http-access-tokens-939515499.html)
+When `.spec.type` is set to `bitbucketserver`, the following auth methods are available:
 
-For Basic Auth(username/password), the secret should be created in following format:
+- Basic Authentication (username/password)
+- [HTTP access tokens](https://confluence.atlassian.com/bitbucketserver/http-access-tokens-939515499.html)
 
-```
-apiVersion: v1
-data:
-  password: Qml0YnVja2V0QDIwMjM=
-  username: Zm9vYmFydXNlcg==
-kind: Secret
-metadata:
-  name: bb-server-username-password
-type: Opaque
-```
+For Basic Authentication, the referenced secret must contain a `password` field. The `username` field can either come from the [`.spec.username` field of the Provider](https://fluxcd.io/flux/components/notification/providers/#username) or can be defined in the referenced secret.
 
-You may create the secret using this command as well:
+You can create the secret with `kubectl` like this:
 
 ```shell
 kubectl create secret generic bb-server-username-password --from-literal=username=<username> --from-literal=password=<password>
 ```
 
-For HTTP access tokens, the secret should be created in following format:
-
-```
-apiVersion: v1
-data:
-  token: QkJEQy1PREl4T0RZeE16SXlOelV5T3R0b3JNak8wNTlQMnJZVGI2RUg3bVBPTTVUbw==
-kind: Secret
-metadata:
-  name: bb-server-token
-type: Opaque
-```
-
-You may create the secret using this command as well:
+For HTTP access tokens, the secret can be created with `kubectl` like this:
 
 ```shell
 kubectl create secret generic bb-server-token --from-literal=token=<token>
