@@ -1514,44 +1514,21 @@ You can create the secret with `kubectl` like this:
 kubectl create secret generic bitbucket-token --from-literal=token=<username>:<app-password>
 ```
 
-#### BitBucketServer
+#### BitBucketServer/Data Center
 
-For bitbucketserver (a.k.a. Bitbucket Data Center), the following auth methods are available: <br /> a) Basic Auth(username/password)
-<br />
+When `.spec.type` is set to `bitbucket`, the following auth methods are available: <br /> 
+a) Basic Auth(username/password) <br />
 b) [HTTP access tokens](https://confluence.atlassian.com/bitbucketserver/http-access-tokens-939515499.html)
 
-For Basic Auth(username/password), the secret should be created in following format:
+For Basic Authentication, the referenced secret must contain a `username` and a `password` field 
 
-```
-apiVersion: v1
-data:
-  password: Qml0YnVja2V0QDIwMjM=
-  username: Zm9vYmFydXNlcg==
-kind: Secret
-metadata:
-  name: bb-server-username-password
-type: Opaque
-```
-
-You may create the secret using this command as well:
+You can create the secret with `kubectl` like this:
 
 ```shell
 kubectl create secret generic bb-server-username-password --from-literal=username=<username> --from-literal=password=<password>
 ```
 
-For HTTP access tokens, the secret should be created in following format:
-
-```
-apiVersion: v1
-data:
-  token: QkJEQy1PREl4T0RZeE16SXlOelV5T3R0b3JNak8wNTlQMnJZVGI2RUg3bVBPTTVUbw==
-kind: Secret
-metadata:
-  name: bb-server-token
-type: Opaque
-```
-
-You may create the secret using this command as well:
+For HTTP access tokens, the secret can be created like this:
 
 ```shell
 kubectl create secret generic bb-server-token --from-literal=token=<token>

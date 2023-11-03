@@ -94,7 +94,6 @@ spec:
                 - generic-hmac
                 - github
                 - gitlab
-                - bitbucketserver
                 - bitbucket
                 - azuredevops
                 - googlechat
