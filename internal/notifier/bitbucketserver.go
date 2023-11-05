@@ -17,18 +17,21 @@ limitations under the License.
 package notifier
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"net/url"
 	"strings"
+	"time"
 
 	eventv1 "github.com/fluxcd/pkg/apis/event/v1beta1"
 	"github.com/fluxcd/pkg/apis/meta"
-	"github.com/go-resty/resty/v2"
 	giturls "github.com/whilp/git-urls"
 )
 
@@ -39,12 +42,16 @@ type BitbucketServer struct {
 	ProviderUID     string
 	ProviderAddress string
 	Host            string
-	Client          *resty.Client
+	Username        string
+	Password        string
+	Token           string
+	Client          *http.Client
 }
 
 const (
-	BuildEndPoint             = "/rest/api/latest/projects/{projectKey}/repos/{repositorySlug}/commits/{commitId}/builds"
-	GetBuildStatusQueryString = "key"
+	buildEndPoint             = "/rest/api/latest/projects/{projectKey}/repos/{repositorySlug}/commits/{commitId}/builds"
+	getBuildStatusQueryString = "key"
+	rqstTimeoutInSeconds      = 5
 )
 
 type RestBuildStatus struct {
@@ -88,22 +95,18 @@ func NewBitbucketServer(providerUID string, addr string, token string, certPool 
 	projectkey := comp[0]
 	reposlug := comp[1]
 
-	bitbucketClient := resty.New()
-	if len(token) == 0 && (len(username) == 0 || len(password) == 0) {
-		return nil, errors.New("invalid credentials, expected to be one of username/password or API Token")
-	}
-	if len(token) > 0 {
-		bitbucketClient.SetAuthToken(token)
-	} else if len(username) > 0 && len(password) > 0 {
-		bitbucketClient.SetBasicAuth(username, password)
+	httpClient := http.DefaultClient
+	httpClient.Timeout = rqstTimeoutInSeconds * time.Second
+	if certPool != nil {
+		httpClient.Transport = &http.Transport{
+			TLSClientConfig: &tls.Config{
+				RootCAs: certPool,
+			},
+		}
 	}
 
-	bitbucketClient.SetHeader("x-atlassian-token", "no-check")
-	bitbucketClient.SetHeader("x-requested-with", "XMLHttpRequest")
-	if certPool != nil {
-		bitbucketClient.SetTLSClientConfig(&tls.Config{
-			RootCAs: certPool,
-		})
+	if len(token) == 0 && (len(username) == 0 || len(password) == 0) {
+		return nil, errors.New("invalid credentials, expected to be one of username/password or API Token")
 	}
 
 	return &BitbucketServer{
@@ -112,7 +115,10 @@ func NewBitbucketServer(providerUID string, addr string, token string, certPool 
 		ProviderUID:     providerUID,
 		Host:            hst,
 		ProviderAddress: addr,
-		Client:          bitbucketClient,
+		Token:           token,
+		Username:        username,
+		Password:        password,
+		Client:          httpClient,
 	}, nil
 }
 
@@ -141,13 +147,14 @@ func (b BitbucketServer) Post(ctx context.Context, event eventv1.Event) error {
 	// key has a limitation of 40 characters in bitbucket api
 	key := sha1String(id)
 
-	dupe, err := checkDuplicateCommitStatus(ctx, b, rev, state, name, desc, id, key)
+	u := createApiPath(b, rev)
+	dupe, err := checkDuplicateCommitStatus(ctx, b, rev, state, name, desc, id, key, u)
 	if err != nil {
 		return fmt.Errorf("could not get existing commit status: %v", err)
 	}
 
 	if dupe == false {
-		_, err = postBuildStatus(ctx, b, rev, state, name, desc, id, key)
+		_, err = postBuildStatus(ctx, b, rev, state, name, desc, id, key, u)
 		if err != nil {
 			return fmt.Errorf("could not post build status: %v", err)
 		}
@@ -167,18 +174,32 @@ func toBitbucketServerState(severity string) (string, error) {
 	}
 }
 
-func checkDuplicateCommitStatus(ctx context.Context, b BitbucketServer, rev, state, name, desc, id, key string) (bool, error) {
-	d, err := b.Client.R().
-		SetContext(ctx).
-		SetQueryParam(GetBuildStatusQueryString, key).
-		Get(createApiPath(b, rev))
-	if err != nil && d.StatusCode() != http.StatusNotFound {
-		return false, err
+func checkDuplicateCommitStatus(ctx context.Context, b BitbucketServer, rev, state, name, desc, id, key, u string) (bool, error) {
+	// Prepare request object
+	req, err := prepareCommonRequest(ctx, u, nil, http.MethodGet, b, key, rev)
+	if err != nil {
+		return false, fmt.Errorf("Could not check duplicate commit status: %v", err)
 	}
 
-	if d.StatusCode() == http.StatusOK {
+	// Set query string
+	q := url.Values{}
+	q.Add(getBuildStatusQueryString, key)
+	req.URL.RawQuery = q.Encode()
+
+	// Make a GET call
+	d, err := b.Client.Do(req)
+	if err != nil && d.StatusCode != http.StatusNotFound {
+		return false, fmt.Errorf("Failed API call to check duplicate commit status: %v", err)
+	}
+	defer d.Body.Close()
+
+	if d.StatusCode == http.StatusOK {
+		bd, err := io.ReadAll(d.Body)
+		if err != nil {
+			return false, fmt.Errorf("Could not read response body for duplicate commit status: %v", err)
+		}
 		var existingCommitStatus RestBuildStatus
-		json.Unmarshal(d.Body(), &existingCommitStatus)
+		json.Unmarshal(bd, &existingCommitStatus)
 		// Do not post duplicate build status
 		if existingCommitStatus.Key == key && existingCommitStatus.State == state && existingCommitStatus.Description == desc && existingCommitStatus.Name == name {
 			return true, nil
@@ -187,27 +208,38 @@ func checkDuplicateCommitStatus(ctx context.Context, b BitbucketServer, rev, sta
 	return false, nil
 }
 
-func postBuildStatus(ctx context.Context, b BitbucketServer, rev, state, name, desc, id, key string) (*resty.Response, error) {
-	r, err := b.Client.R().
-		SetContext(ctx).
-		SetBody(RestBuildStatusSetRequest{
-			Key:         key,
-			State:       state,
-			Url:         b.ProviderAddress,
-			Description: desc,
-			Name:        name,
-		}).
-		Post(createApiPath(b, rev))
+func postBuildStatus(ctx context.Context, b BitbucketServer, rev, state, name, desc, id, key, url string) (*http.Response, error) {
+	//Prepare json body
+	j := &RestBuildStatusSetRequest{
+		Key:         key,
+		State:       state,
+		Url:         b.ProviderAddress,
+		Description: desc,
+		Name:        name,
+	}
+	p := new(bytes.Buffer)
+	json.NewEncoder(p).Encode(j)
+
+	//Prepare request
+	req, err := prepareCommonRequest(ctx, url, p, http.MethodPost, b, key, rev)
 	if err != nil {
-		return r, err
+		return nil, fmt.Errorf("Could not post Build commit status: %v", err)
 	}
 
-	return r, nil
+	// Add Content type header
+	req.Header.Add("Content-Type", "application/json")
+
+	// Make a POST call
+	resp, err := b.Client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("Could not post Build commit status: %v", err)
+	}
+	defer resp.Body.Close()
+	return resp, nil
 }
 
 func createApiPath(b BitbucketServer, rev string) string {
-	// create path and map variables
-	localVarPath := b.Host + BuildEndPoint
+	localVarPath := b.Host + buildEndPoint
 	localVarPath = strings.Replace(localVarPath, "{"+"projectKey"+"}", fmt.Sprintf("%v", b.ProjectKey), -1)
 	localVarPath = strings.Replace(localVarPath, "{"+"commitId"+"}", fmt.Sprintf("%v", rev), -1)
 	localVarPath = strings.Replace(localVarPath, "{"+"repositorySlug"+"}", fmt.Sprintf("%v", b.RepositorySlug), -1)
@@ -229,4 +261,21 @@ func parseBitbucketServerGitAddress(s string) (string, string, error) {
 	id = strings.TrimSuffix(id, ".git")
 	host := fmt.Sprintf("%s://%s", scheme, u.Host)
 	return host, id, nil
+}
+
+func prepareCommonRequest(ctx context.Context, path string, body io.Reader, method string, b BitbucketServer, key, rev string) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, method, path, body)
+	if err != nil {
+		return nil, fmt.Errorf("Could not prepare request: %v", err)
+	}
+
+	if b.Token != "" {
+		req.Header.Add("Authorization", "Bearer "+b.Token)
+	} else {
+		req.SetBasicAuth(b.Username, b.Password)
+	}
+	req.Header.Add("x-atlassian-token", "no-check")
+	req.Header.Add("x-requested-with", "XMLHttpRequest")
+
+	return req, nil
 }

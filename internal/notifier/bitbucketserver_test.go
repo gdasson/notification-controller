@@ -36,14 +36,14 @@ import (
 func TestNewBitbucketServerBasic(t *testing.T) {
 	b, err := NewBitbucketServer("0c9c2e41-d2f9-4f9b-9c41-bebc1984d67a", "https://example.com:7990/scm/projectfoo/repobar.git", "", nil, "dummyuser", "testpassword")
 	assert.Nil(t, err)
-	assert.Equal(t, b.Client.UserInfo.Username, "dummyuser")
-	assert.Equal(t, b.Client.UserInfo.Password, "testpassword")
+	assert.Equal(t, b.Username, "dummyuser")
+	assert.Equal(t, b.Password, "testpassword")
 }
 
 func TestNewBitbucketServerToken(t *testing.T) {
 	b, err := NewBitbucketServer("0c9c2e41-d2f9-4f9b-9c41-bebc1984d67a", "https://example.com:7990/scm/projectfoo/repobar.git", "BBDC-ODIxODYxMzIyNzUyOttorMjO059P2rYTb6EH7mP", nil, "", "")
 	assert.Nil(t, err)
-	assert.Equal(t, b.Client.Token, "BBDC-ODIxODYxMzIyNzUyOttorMjO059P2rYTb6EH7mP")
+	assert.Equal(t, b.Token, "BBDC-ODIxODYxMzIyNzUyOttorMjO059P2rYTb6EH7mP")
 }
 
 func TestNewBitbucketServerInvalidCreds(t *testing.T) {
@@ -220,7 +220,7 @@ func TestBitBucketServerPostValidateRequest(t *testing.T) {
 				if r.Method == http.MethodGet {
 
 					//Validate that this GET request has a query string with "key" as the query paraneter
-					require.Equal(t, r.URL.Query().Get(GetBuildStatusQueryString), tt.key)
+					require.Equal(t, r.URL.Query().Get(getBuildStatusQueryString), tt.key)
 
 					// Validate that this GET request has no body
 					require.Equal(t, http.NoBody, r.Body)

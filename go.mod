@@ -22,7 +22,6 @@ require (
 	github.com/fluxcd/pkg/ssa v0.32.0
 	github.com/getsentry/sentry-go v0.23.0
 	github.com/go-logr/logr v1.2.4
-	github.com/go-resty/resty/v2 v2.10.0
 	github.com/google/go-github/v53 v53.2.0
 	github.com/hashicorp/go-retryablehttp v0.7.4
 	github.com/ktrysmt/go-bitbucket v0.9.68
