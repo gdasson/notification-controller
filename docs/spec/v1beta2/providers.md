@@ -1314,8 +1314,8 @@ jobs:
     if: github.event.client_payload.metadata.summary == 'staging (us-west-2)'
     runs-on: ubuntu-18.04
     steps:
-      - name: Run tests
-        run: echo "running tests.."
+    - name: Run tests
+      run: echo "running tests.."
 ```
 
 ### Azure Event Hub
@@ -1636,4 +1636,3 @@ annotation value it acted on in the `.status.lastHandledReconcileAt` field.
 
 [typical-status-properties]: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
 [kstatus-spec]: https://github.com/kubernetes-sigs/cli-utils/tree/master/pkg/kstatus
-
