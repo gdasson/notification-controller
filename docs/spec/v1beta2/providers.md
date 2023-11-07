@@ -1260,9 +1260,9 @@ Let's say we have following folder structure for applications kustomization mani
 ```bash
 apps/
 ├── app1
-│   └── overlays
-│       ├── production
-│       └── staging
+│   └── overlays
+│       ├── production
+│       └── staging
 └── app2
     └── overlays
         ├── production
@@ -1517,11 +1517,12 @@ kubectl create secret generic bitbucket-token --from-literal=token=<username>:<a
 
 #### BitBucket Server/Data Center
 
-When `.spec.type` is set to `bitbucketserver`, the following auth methods are available: <br /> 
-a) Basic Authentication (username/password) <br />
-b) [HTTP access tokens](https://confluence.atlassian.com/bitbucketserver/http-access-tokens-939515499.html)
+When `.spec.type` is set to `bitbucketserver`, the following auth methods are available:
 
-For Basic Authentication, the referenced secret must contain a `username` and a `password` field.
+- Basic Authentication (username/password) <br />
+- [HTTP access tokens](https://confluence.atlassian.com/bitbucketserver/http-access-tokens-939515499.html)
+
+For Basic Authentication, the referenced secret must contain a `password` field. The `username` field can come from [.spec.username field of Provider](https://fluxcd.io/flux/components/notification/providers/#username) or can be defined in the referenced secret.
 
 You can create the secret with `kubectl` like this:
 

@@ -900,9 +900,9 @@ Let's say we have following folder structure for applications kustomization mani
 ```bash
 apps/
 ├── app1
-│   └── overlays
-│       ├── production
-│       └── staging
+│   └── overlays
+│       ├── production
+│       └── staging
 └── app2
     └── overlays
         ├── production

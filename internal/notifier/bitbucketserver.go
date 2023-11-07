@@ -191,6 +191,10 @@ func checkDuplicateCommitStatus(ctx context.Context, b BitbucketServer, rev, sta
 	if err != nil && d.StatusCode != http.StatusNotFound {
 		return false, fmt.Errorf("Failed API call to check duplicate commit status: %v", err)
 	}
+	if isError(d) && d.StatusCode != http.StatusNotFound { // Note: A non-2xx status code doesn't cause an error: https://pkg.go.dev/net/http#Client.Do
+		defer d.Body.Close() // If the returned error is nil, the Response will contain a non-nil Body which the user is expected to close: https://pkg.go.dev/net/http#Client.Do
+		return false, fmt.Errorf("Failed API call to check duplicate commit status: %d - %s", d.StatusCode, http.StatusText(d.StatusCode))
+	}
 	defer d.Body.Close()
 
 	if d.StatusCode == http.StatusOK {
@@ -223,7 +227,7 @@ func postBuildStatus(ctx context.Context, b BitbucketServer, rev, state, name, d
 	//Prepare request
 	req, err := prepareCommonRequest(ctx, url, p, http.MethodPost, b, key, rev)
 	if err != nil {
-		return nil, fmt.Errorf("Could not post Build commit status: %v", err)
+		return nil, fmt.Errorf("Failed preparing request for Build commit status: %v", err)
 	}
 
 	// Add Content type header
@@ -233,6 +237,10 @@ func postBuildStatus(ctx context.Context, b BitbucketServer, rev, state, name, d
 	resp, err := b.Client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("Could not post Build commit status: %v", err)
+	}
+	if isError(resp) { // Note: A non-2xx status code doesn't cause an error: https://pkg.go.dev/net/http#Client.Do
+		defer resp.Body.Close() // If the returned error is nil, the Response will contain a non-nil Body which the user is expected to close: https://pkg.go.dev/net/http#Client.Do
+		return nil, fmt.Errorf("Could not post Build commit status: %d - %s", resp.StatusCode, http.StatusText(resp.StatusCode))
 	}
 	defer resp.Body.Close()
 	return resp, nil
@@ -278,4 +286,14 @@ func prepareCommonRequest(ctx context.Context, path string, body io.Reader, meth
 	req.Header.Add("x-requested-with", "XMLHttpRequest")
 
 	return req, nil
+}
+
+// isSuccess method returns true if HTTP status `code >= 200 and <= 299` otherwise false.
+func isSuccess(r *http.Response) bool {
+	return r.StatusCode > 199 && r.StatusCode < 300
+}
+
+// isError method returns true if HTTP status `code >= 400` otherwise false.
+func isError(r *http.Response) bool {
+	return r.StatusCode > 399
 }
