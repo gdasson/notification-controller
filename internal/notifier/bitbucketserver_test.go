@@ -52,12 +52,6 @@ func TestNewBitbucketServerInvalidCreds(t *testing.T) {
 	assert.Equal(t, err.Error(), "invalid credentials, expected to be one of username/password or API Token")
 }
 
-// func TestNewBitbucketServerInvalidUrl(t *testing.T) {
-// 	_, err := NewBitbucketServer("0c9c2e41-d2f9-4f9b-9c41-bebc1984d67a", "ssh://git@example.com:7999/projectfoo/repobar.git", "BBDC-ODIxODYxMzIyNzUyOttorMjO059P2rYTb6EH7mP", nil, "", "")
-// 	assert.NotNil(t, err)
-// 	assert.Equal(t, err.Error(), "Unsupported git scheme ssh in address \"ssh://git@example.com:7999/projectfoo/repobar.git\". Please provide address in http/https format for BitbucketServer provider")
-// }
-
 func TestNewBitbucketServerInvalidRepo(t *testing.T) {
 	_, err := NewBitbucketServer("0c9c2e41-d2f9-4f9b-9c41-bebc1984d67a", "https://example.com:7990/scm/projectfoo/repobar/invalid.git", "BBDC-ODIxODYxMzIyNzUyOttorMjO059P2rYTb6EH7mP", nil, "", "")
 	assert.NotNil(t, err)
