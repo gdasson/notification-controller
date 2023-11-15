@@ -32,7 +32,7 @@ import (
 
 	eventv1 "github.com/fluxcd/pkg/apis/event/v1beta1"
 	"github.com/fluxcd/pkg/apis/meta"
-	giturls "github.com/whilp/git-urls"
+	"github.com/hashicorp/go-retryablehttp"
 )
 
 // BitbucketServer is a notifier for BitBucket Server and Data Center.
@@ -45,13 +45,12 @@ type BitbucketServer struct {
 	Username        string
 	Password        string
 	Token           string
-	Client          *http.Client
+	Client          *retryablehttp.Client
 }
 
 const (
-	buildEndPoint             = "/rest/api/latest/projects/{projectKey}/repos/{repositorySlug}/commits/{commitId}/builds"
-	getBuildStatusQueryString = "key"
-	rqstTimeoutInSeconds      = 5
+	bbServerEndPointTmpl              = "/rest/api/latest/projects/%[1]s/repos/%[2]s/commits/%[3]s/builds"
+	bbServerGetBuildStatusQueryString = "key"
 )
 
 type RestBuildStatus struct {
@@ -81,7 +80,7 @@ type RestBuildStatusSetRequest struct {
 	Url         string `json:"url"`
 }
 
-// NewBitbucketServer creates and returns a new NewBitbucketServer notifier.
+// NewBitbucketServer creates and returns a new BitbucketServer notifier.
 func NewBitbucketServer(providerUID string, addr string, token string, certPool *x509.CertPool, username string, password string) (*BitbucketServer, error) {
 	hst, id, err := parseBitbucketServerGitAddress(addr)
 	if err != nil {
@@ -95,15 +94,20 @@ func NewBitbucketServer(providerUID string, addr string, token string, certPool 
 	projectkey := comp[0]
 	reposlug := comp[1]
 
-	httpClient := http.DefaultClient
-	httpClient.Timeout = rqstTimeoutInSeconds * time.Second
+	httpClient := retryablehttp.NewClient()
 	if certPool != nil {
-		httpClient.Transport = &http.Transport{
+		httpClient.HTTPClient.Transport = &http.Transport{
 			TLSClientConfig: &tls.Config{
 				RootCAs: certPool,
 			},
 		}
 	}
+
+	httpClient.HTTPClient.Timeout = 15 * time.Second
+	httpClient.RetryWaitMin = 2 * time.Second
+	httpClient.RetryWaitMax = 30 * time.Second
+	httpClient.RetryMax = 4
+	httpClient.Logger = nil
 
 	if len(token) == 0 && (len(username) == 0 || len(password) == 0) {
 		return nil, errors.New("invalid credentials, expected to be one of username/password or API Token")
@@ -134,11 +138,11 @@ func (b BitbucketServer) Post(ctx context.Context, event eventv1.Event) error {
 	}
 	rev, err := parseRevision(revString)
 	if err != nil {
-		return fmt.Errorf("Could not parse revision: %v", err)
+		return fmt.Errorf("could not parse revision: %w", err)
 	}
-	state, err := toBitbucketServerState(event.Severity)
+	state, err := b.state(event.Severity)
 	if err != nil {
-		return fmt.Errorf("couldn't convert to bitbucket server state: %v", err)
+		return fmt.Errorf("couldn't convert to bitbucket server state: %w", err)
 	}
 
 	name, desc := formatNameAndDescription(event)
@@ -147,63 +151,66 @@ func (b BitbucketServer) Post(ctx context.Context, event eventv1.Event) error {
 	// key has a limitation of 40 characters in bitbucket api
 	key := sha1String(id)
 
-	u := createApiPath(b, rev)
-	dupe, err := checkDuplicateCommitStatus(ctx, b, rev, state, name, desc, id, key, u)
+	u := b.Host + b.createApiPath(rev)
+	dupe, err := b.duplicateBitbucketServerStatus(ctx, rev, state, name, desc, id, key, u)
 	if err != nil {
-		return fmt.Errorf("could not get existing commit status: %v", err)
+		return fmt.Errorf("could not get existing commit status: %w", err)
 	}
 
-	if dupe == false {
-		_, err = postBuildStatus(ctx, b, rev, state, name, desc, id, key, u)
+	if !dupe {
+		_, err = b.postBuildStatus(ctx, rev, state, name, desc, id, key, u)
 		if err != nil {
-			return fmt.Errorf("could not post build status: %v", err)
+			return fmt.Errorf("could not post build status: %w", err)
 		}
 	}
 
 	return nil
 }
 
-func toBitbucketServerState(severity string) (string, error) {
+func (b BitbucketServer) state(severity string) (string, error) {
 	switch severity {
 	case eventv1.EventSeverityInfo:
 		return "SUCCESSFUL", nil
 	case eventv1.EventSeverityError:
 		return "FAILED", nil
 	default:
-		return "", errors.New("Bitbucket server state generated on info or error events only")
+		return "", errors.New("bitbucket server state generated on info or error events only")
 	}
 }
 
-func checkDuplicateCommitStatus(ctx context.Context, b BitbucketServer, rev, state, name, desc, id, key, u string) (bool, error) {
+func (b BitbucketServer) duplicateBitbucketServerStatus(ctx context.Context, rev, state, name, desc, id, key, u string) (bool, error) {
 	// Prepare request object
-	req, err := prepareCommonRequest(ctx, u, nil, http.MethodGet, b, key, rev)
+	req, err := b.prepareCommonRequest(ctx, u, nil, http.MethodGet, key, rev)
 	if err != nil {
-		return false, fmt.Errorf("Could not check duplicate commit status: %v", err)
+		return false, fmt.Errorf("could not check duplicate commit status: %w", err)
 	}
 
 	// Set query string
 	q := url.Values{}
-	q.Add(getBuildStatusQueryString, key)
+	q.Add(bbServerGetBuildStatusQueryString, key)
 	req.URL.RawQuery = q.Encode()
 
 	// Make a GET call
 	d, err := b.Client.Do(req)
 	if err != nil && d.StatusCode != http.StatusNotFound {
-		return false, fmt.Errorf("Failed API call to check duplicate commit status: %v", err)
+		return false, fmt.Errorf("failed api call to check duplicate commit status: %w", err)
 	}
-	if isError(d) && d.StatusCode != http.StatusNotFound { // Note: A non-2xx status code doesn't cause an error: https://pkg.go.dev/net/http#Client.Do
-		defer d.Body.Close() // If the returned error is nil, the Response will contain a non-nil Body which the user is expected to close: https://pkg.go.dev/net/http#Client.Do
-		return false, fmt.Errorf("Failed API call to check duplicate commit status: %d - %s", d.StatusCode, http.StatusText(d.StatusCode))
+	if isError(d) && d.StatusCode != http.StatusNotFound {
+		defer d.Body.Close()
+		return false, fmt.Errorf("failed api call to check duplicate commit status: %d - %s", d.StatusCode, http.StatusText(d.StatusCode))
 	}
 	defer d.Body.Close()
 
 	if d.StatusCode == http.StatusOK {
 		bd, err := io.ReadAll(d.Body)
 		if err != nil {
-			return false, fmt.Errorf("Could not read response body for duplicate commit status: %v", err)
+			return false, fmt.Errorf("could not read response body for duplicate commit status: %w", err)
 		}
 		var existingCommitStatus RestBuildStatus
-		json.Unmarshal(bd, &existingCommitStatus)
+		err = json.Unmarshal(bd, &existingCommitStatus)
+		if err != nil {
+			return false, fmt.Errorf("could not unmarshal json response body for duplicate commit status: %w", err)
+		}
 		// Do not post duplicate build status
 		if existingCommitStatus.Key == key && existingCommitStatus.State == state && existingCommitStatus.Description == desc && existingCommitStatus.Name == name {
 			return true, nil
@@ -212,7 +219,7 @@ func checkDuplicateCommitStatus(ctx context.Context, b BitbucketServer, rev, sta
 	return false, nil
 }
 
-func postBuildStatus(ctx context.Context, b BitbucketServer, rev, state, name, desc, id, key, url string) (*http.Response, error) {
+func (b BitbucketServer) postBuildStatus(ctx context.Context, rev, state, name, desc, id, key, url string) (*http.Response, error) {
 	//Prepare json body
 	j := &RestBuildStatusSetRequest{
 		Key:         key,
@@ -222,12 +229,15 @@ func postBuildStatus(ctx context.Context, b BitbucketServer, rev, state, name, d
 		Name:        name,
 	}
 	p := new(bytes.Buffer)
-	json.NewEncoder(p).Encode(j)
+	err := json.NewEncoder(p).Encode(j)
+	if err != nil {
+		return nil, fmt.Errorf("failed preparing request for post build commit status, could not encode request body to json: %w", err)
+	}
 
 	//Prepare request
-	req, err := prepareCommonRequest(ctx, url, p, http.MethodPost, b, key, rev)
+	req, err := b.prepareCommonRequest(ctx, url, p, http.MethodPost, key, rev)
 	if err != nil {
-		return nil, fmt.Errorf("Failed preparing request for Build commit status: %v", err)
+		return nil, fmt.Errorf("failed preparing request for post build commit status: %w", err)
 	}
 
 	// Add Content type header
@@ -236,61 +246,46 @@ func postBuildStatus(ctx context.Context, b BitbucketServer, rev, state, name, d
 	// Make a POST call
 	resp, err := b.Client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("Could not post Build commit status: %v", err)
+		return nil, fmt.Errorf("could not post build commit status: %w", err)
 	}
-	if isError(resp) { // Note: A non-2xx status code doesn't cause an error: https://pkg.go.dev/net/http#Client.Do
-		defer resp.Body.Close() // If the returned error is nil, the Response will contain a non-nil Body which the user is expected to close: https://pkg.go.dev/net/http#Client.Do
-		return nil, fmt.Errorf("Could not post Build commit status: %d - %s", resp.StatusCode, http.StatusText(resp.StatusCode))
+	// Note: A non-2xx status code doesn't cause an error: https://pkg.go.dev/net/http#Client.Do
+	if isError(resp) {
+		defer resp.Body.Close()
+		return nil, fmt.Errorf("could not post build commit status: %d - %s", resp.StatusCode, http.StatusText(resp.StatusCode))
 	}
 	defer resp.Body.Close()
 	return resp, nil
 }
 
-func createApiPath(b BitbucketServer, rev string) string {
-	localVarPath := b.Host + buildEndPoint
-	localVarPath = strings.Replace(localVarPath, "{"+"projectKey"+"}", fmt.Sprintf("%v", b.ProjectKey), -1)
-	localVarPath = strings.Replace(localVarPath, "{"+"commitId"+"}", fmt.Sprintf("%v", rev), -1)
-	localVarPath = strings.Replace(localVarPath, "{"+"repositorySlug"+"}", fmt.Sprintf("%v", b.RepositorySlug), -1)
-	return localVarPath
+func (b BitbucketServer) createApiPath(rev string) string {
+	return fmt.Sprintf(bbServerEndPointTmpl, b.ProjectKey, b.RepositorySlug, rev)
 }
 
 func parseBitbucketServerGitAddress(s string) (string, string, error) {
-	u, err := giturls.Parse(s)
+	host, id, err := parseGitAddress(s)
 	if err != nil {
-		return "", "", fmt.Errorf("failed parsing URL %q: %w", s, err)
+		return "", "", fmt.Errorf("could not parse git address: %w", err)
 	}
-
-	scheme := u.Scheme
-	if u.Scheme != "http" && u.Scheme != "https" {
-		return "", "", fmt.Errorf("Unsupported git scheme %s in address %q. Please provide address in http/https format for BitbucketServer provider", u.Scheme, s)
-	}
-
-	id := strings.TrimPrefix(u.Path, "/scm/") //https://community.atlassian.com/t5/Bitbucket-questions/remote-url-in-Bitbucket-server-what-does-scm-represent-is-it/qaq-p/2060987
-	id = strings.TrimSuffix(id, ".git")
-	host := fmt.Sprintf("%s://%s", scheme, u.Host)
+	//Remove "scm/" --> https://community.atlassian.com/t5/Bitbucket-questions/remote-url-in-Bitbucket-server-what-does-scm-represent-is-it/qaq-p/2060987
+	id = strings.TrimPrefix(id, "scm/")
 	return host, id, nil
 }
 
-func prepareCommonRequest(ctx context.Context, path string, body io.Reader, method string, b BitbucketServer, key, rev string) (*http.Request, error) {
-	req, err := http.NewRequestWithContext(ctx, method, path, body)
+func (b BitbucketServer) prepareCommonRequest(ctx context.Context, path string, body io.Reader, method string, key, rev string) (*retryablehttp.Request, error) {
+	req, err := retryablehttp.NewRequestWithContext(ctx, method, path, body)
 	if err != nil {
-		return nil, fmt.Errorf("Could not prepare request: %v", err)
+		return nil, fmt.Errorf("could not prepare request: %w", err)
 	}
 
 	if b.Token != "" {
-		req.Header.Add("Authorization", "Bearer "+b.Token)
+		req.Header.Set("Authorization", "Bearer "+b.Token)
 	} else {
-		req.SetBasicAuth(b.Username, b.Password)
+		req.Header.Add("Authorization", "Basic "+basicAuth(b.Username, b.Password))
 	}
 	req.Header.Add("x-atlassian-token", "no-check")
 	req.Header.Add("x-requested-with", "XMLHttpRequest")
 
 	return req, nil
-}
-
-// isSuccess method returns true if HTTP status `code >= 200 and <= 299` otherwise false.
-func isSuccess(r *http.Response) bool {
-	return r.StatusCode > 199 && r.StatusCode < 300
 }
 
 // isError method returns true if HTTP status `code >= 400` otherwise false.
