@@ -53,7 +53,7 @@ const (
 	bbServerGetBuildStatusQueryString = "key"
 )
 
-type RestBuildStatus struct {
+type bbServerBuildStatus struct {
 	Name        string `json:"name,omitempty"`
 	Key         string `json:"key,omitempty"`
 	Parent      string `json:"parent,omitempty"`
@@ -67,7 +67,7 @@ type RestBuildStatus struct {
 	Url         string `json:"url,omitempty"`
 }
 
-type RestBuildStatusSetRequest struct {
+type bbServerBuildStatusSetRequest struct {
 	BuildNumber string `json:"buildNumber,omitempty"`
 	Description string `json:"description,omitempty"`
 	Duration    int64  `json:"duration,omitempty"`
@@ -206,7 +206,7 @@ func (b BitbucketServer) duplicateBitbucketServerStatus(ctx context.Context, rev
 		if err != nil {
 			return false, fmt.Errorf("could not read response body for duplicate commit status: %w", err)
 		}
-		var existingCommitStatus RestBuildStatus
+		var existingCommitStatus bbServerBuildStatus
 		err = json.Unmarshal(bd, &existingCommitStatus)
 		if err != nil {
 			return false, fmt.Errorf("could not unmarshal json response body for duplicate commit status: %w", err)
@@ -221,7 +221,7 @@ func (b BitbucketServer) duplicateBitbucketServerStatus(ctx context.Context, rev
 
 func (b BitbucketServer) postBuildStatus(ctx context.Context, rev, state, name, desc, id, key, url string) (*http.Response, error) {
 	//Prepare json body
-	j := &RestBuildStatusSetRequest{
+	j := &bbServerBuildStatusSetRequest{
 		Key:         key,
 		State:       state,
 		Url:         b.ProviderAddress,

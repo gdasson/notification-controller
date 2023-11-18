@@ -1519,10 +1519,10 @@ kubectl create secret generic bitbucket-token --from-literal=token=<username>:<a
 
 When `.spec.type` is set to `bitbucketserver`, the following auth methods are available:
 
-- Basic Authentication (username/password) <br />
+- Basic Authentication (username/password)
 - [HTTP access tokens](https://confluence.atlassian.com/bitbucketserver/http-access-tokens-939515499.html)
 
-For Basic Authentication, the referenced secret must contain a `password` field. The `username` field can come from [.spec.username field of Provider](https://fluxcd.io/flux/components/notification/providers/#username) or can be defined in the referenced secret.
+For Basic Authentication, the referenced secret must contain a `password` field. The `username` field can either come from the [`.spec.username` field of the Provider](https://fluxcd.io/flux/components/notification/providers/#username) or can be defined in the referenced secret.
 
 You can create the secret with `kubectl` like this:
 

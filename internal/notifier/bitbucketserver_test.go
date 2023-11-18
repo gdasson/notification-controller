@@ -143,24 +143,7 @@ func TestBitBucketServerPostValidateRequest(t *testing.T) {
 			}))),
 		},
 		{
-			name:        "Validate Basic Auth",
-			username:    "hello",
-			password:    "password",
-			provideruid: "0c9c2e41-d2f9-4f9b-9c41-bebc1984d67a",
-			headers: map[string]string{
-				"Authorization":     "Basic " + base64.StdEncoding.EncodeToString([]byte("hello"+":"+"password")),
-				"x-atlassian-token": "no-check",
-				"x-requested-with":  "XMLHttpRequest",
-			},
-			event: generateTestEventKustomization("info", map[string]string{
-				eventv1.MetaRevisionKey: "main@sha1:5394cb7f48332b2de7c17dd8b8384bbc84b7e738",
-			}),
-			key: sha1String(generateCommitStatusID("0c9c2e41-d2f9-4f9b-9c41-bebc1984d67a", generateTestEventKustomization("info", map[string]string{
-				eventv1.MetaRevisionKey: "main@sha1:5394cb7f48332b2de7c17dd8b8384bbc84b7e738",
-			}))),
-		},
-		{
-			name:        "Validate Post State=Successful",
+			name:        "Validate Basic Auth and Post State=Successful",
 			username:    "hello",
 			password:    "password",
 			provideruid: "0c9c2e41-d2f9-4f9b-9c41-bebc1984d67a",
@@ -250,6 +233,23 @@ func TestBitBucketServerPostValidateRequest(t *testing.T) {
 				eventv1.MetaRevisionKey: "main@sha1:5394cb7f48332b2de7c17dd8b8384bbc84b7e738",
 			}))),
 		},
+		{
+			name:        "Validate duplicate commit status successful match",
+			username:    "hello",
+			password:    "password",
+			provideruid: "0c9c2e41-d2f9-4f9b-9c41-bebc1984d67a",
+			headers: map[string]string{
+				"Authorization":     "Basic " + base64.StdEncoding.EncodeToString([]byte("hello"+":"+"password")),
+				"x-atlassian-token": "no-check",
+				"x-requested-with":  "XMLHttpRequest",
+			},
+			event: generateTestEventKustomization("info", map[string]string{
+				eventv1.MetaRevisionKey: "main@sha1:5394cb7f48332b2de7c17dd8b8384bbc84b7e738",
+			}),
+			key: sha1String(generateCommitStatusID("0c9c2e41-d2f9-4f9b-9c41-bebc1984d67a", generateTestEventKustomization("info", map[string]string{
+				eventv1.MetaRevisionKey: "main@sha1:5394cb7f48332b2de7c17dd8b8384bbc84b7e738",
+			}))),
+		},
 	}
 
 	for _, tt := range tests {
@@ -273,6 +273,20 @@ func TestBitBucketServerPostValidateRequest(t *testing.T) {
 					// Validate that this GET request has no body
 					require.Equal(t, http.NoBody, r.Body)
 
+					if tt.name == "Validate duplicate commit status successful match" {
+						w.WriteHeader(http.StatusOK)
+						w.Header().Add("Content-Type", "application/json")
+						name, desc := formatNameAndDescription(tt.event)
+						name = name + " [" + desc + "]"
+						jsondata, _ := json.Marshal(&bbServerBuildStatus{
+							Name:        name,
+							Description: desc,
+							Key:         sha1String(generateCommitStatusID(tt.provideruid, tt.event)),
+							State:       "SUCCESSFUL",
+							Url:         "https://example.com:7990/scm/projectfoo/repobar.git",
+						})
+						w.Write(jsondata)
+					}
 					if tt.testFailReason == "badstatuscode" {
 						w.WriteHeader(http.StatusBadRequest)
 					} else if tt.testFailReason == "badjson" {
@@ -280,17 +294,17 @@ func TestBitBucketServerPostValidateRequest(t *testing.T) {
 						w.Header().Add("Content-Type", "application/json")
 						//Do nothing here and an empty/null body will be returned
 					} else {
-						w.WriteHeader(http.StatusOK)
-						w.Header().Add("Content-Type", "application/json")
-						w.Write([]byte(`{
-						"createdDate": 1698626179981,
-						"dateAdded": 1698626179980,
+						if tt.name != "Validate duplicate commit status successful match" {
+							w.WriteHeader(http.StatusOK)
+							w.Header().Add("Content-Type", "application/json")
+							w.Write([]byte(`{
 						"description": "reconciliation succeeded",
 						"key": "TEST2",
 						"state": "SUCCESSFUL",
 						"name": "kustomization/helloworld-yaml-2-bitbucket-server [reconciliation succeeded]",
 						"url": "https://example.com:7990/scm/projectfoo/repobar.git"
 					}`))
+						}
 					}
 				}
 
@@ -308,7 +322,7 @@ func TestBitBucketServerPostValidateRequest(t *testing.T) {
 					require.NoError(t, err)
 
 					// Parse json request into Payload Request body struct
-					var payload RestBuildStatusSetRequest
+					var payload bbServerBuildStatusSetRequest
 					err = json.Unmarshal(b, &payload)
 					require.NoError(t, err)
 
@@ -339,6 +353,12 @@ func TestBitBucketServerPostValidateRequest(t *testing.T) {
 					require.Contains(t, payload.Url, "/scm/projectfoo/repobar.git")
 
 					if tt.testFailReason == "badpost" {
+						w.WriteHeader(http.StatusUnauthorized)
+					}
+
+					// Sending a bad response here
+					// This proves that the duplicate commit status is never posted
+					if tt.name == "Validate duplicate commit status successful match" {
 						w.WriteHeader(http.StatusUnauthorized)
 					}
 				}
