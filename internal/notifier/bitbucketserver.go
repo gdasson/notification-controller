@@ -268,6 +268,15 @@ func parseBitbucketServerGitAddress(s string) (string, string, error) {
 	}
 	//Remove "scm/" --> https://community.atlassian.com/t5/Bitbucket-questions/remote-url-in-Bitbucket-server-what-does-scm-represent-is-it/qaq-p/2060987
 	id = strings.TrimPrefix(id, "scm/")
+
+	// Handle context scenarios --> https://confluence.atlassian.com/bitbucketserver/change-bitbucket-s-context-path-776640153.html
+	idsplit := strings.Split(id, "/scm/")
+	if len(idsplit) > 1 {
+		host = host + "/" + idsplit[0]
+		id = idsplit[1]
+	} else {
+		id = idsplit[0]
+	}
 	return host, id, nil
 }
 

@@ -33,8 +33,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestNewBitbucketServerBasic(t *testing.T) {
+func TestNewBitbucketServerBasicNoContext(t *testing.T) {
 	b, err := NewBitbucketServer("0c9c2e41-d2f9-4f9b-9c41-bebc1984d67a", "https://example.com:7990/scm/projectfoo/repobar.git", "", nil, "dummyuser", "testpassword")
+	assert.Nil(t, err)
+	assert.Equal(t, b.Username, "dummyuser")
+	assert.Equal(t, b.Password, "testpassword")
+}
+
+func TestNewBitbucketServerBasicWithContext(t *testing.T) {
+	b, err := NewBitbucketServer("0c9c2e41-d2f9-4f9b-9c41-bebc1984d67a", "https://example.com:7990/context/scm/projectfoo/repobar.git", "", nil, "dummyuser", "testpassword")
 	assert.Nil(t, err)
 	assert.Equal(t, b.Username, "dummyuser")
 	assert.Equal(t, b.Password, "testpassword")
