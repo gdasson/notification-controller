@@ -37,12 +37,9 @@ import (
 
 // BitbucketServer is a notifier for BitBucket Server and Data Center.
 type BitbucketServer struct {
-	ProjectKey      string
-	RepositorySlug  string
 	ProviderUID     string
+	Url             *url.URL
 	ProviderAddress string
-	Host            string
-	ContextPath     string
 	Username        string
 	Password        string
 	Token           string
@@ -50,8 +47,10 @@ type BitbucketServer struct {
 }
 
 const (
-	bbServerEndPointTmpl              = "%[1]s/rest/api/latest/projects/%[2]s/repos/%[3]s/commits/%[4]s/builds"
+	bbServerEndPointCommits           = "%[1]s/rest/api/latest/projects/%[2]s/repos/%[3]s/commits"
+	bbServerEndPointTmplBuilds        = "%[1]s/builds"
 	bbServerGetBuildStatusQueryString = "key"
+	bbServerSourceCodeMgmtString      = "/scm/"
 )
 
 type bbServerBuildStatus struct {
@@ -83,17 +82,10 @@ type bbServerBuildStatusSetRequest struct {
 
 // NewBitbucketServer creates and returns a new BitbucketServer notifier.
 func NewBitbucketServer(providerUID string, addr string, token string, certPool *x509.CertPool, username string, password string) (*BitbucketServer, error) {
-	hst, cntxtPath, id, err := parseBitbucketServerGitAddress(addr)
+	url, err := parseBitbucketServerGitAddress(addr)
 	if err != nil {
 		return nil, err
 	}
-
-	comp := strings.Split(id, "/")
-	if len(comp) != 2 {
-		return nil, fmt.Errorf("invalid repository id %q", id)
-	}
-	projectkey := comp[0]
-	reposlug := comp[1]
 
 	httpClient := retryablehttp.NewClient()
 	if certPool != nil {
@@ -115,12 +107,9 @@ func NewBitbucketServer(providerUID string, addr string, token string, certPool 
 	}
 
 	return &BitbucketServer{
-		ProjectKey:      projectkey,
-		RepositorySlug:  reposlug,
 		ProviderUID:     providerUID,
-		Host:            hst,
+		Url:             url,
 		ProviderAddress: addr,
-		ContextPath:     cntxtPath,
 		Token:           token,
 		Username:        username,
 		Password:        password,
@@ -153,7 +142,7 @@ func (b BitbucketServer) Post(ctx context.Context, event eventv1.Event) error {
 	// key has a limitation of 40 characters in bitbucket api
 	key := sha1String(id)
 
-	u := b.Host + b.createApiPath(rev)
+	u := b.Url.JoinPath(b.createBuildPath(rev)).String()
 	dupe, err := b.duplicateBitbucketServerStatus(ctx, state, name, desc, key, u)
 	if err != nil {
 		return fmt.Errorf("could not get existing commit status: %w", err)
@@ -259,35 +248,43 @@ func (b BitbucketServer) postBuildStatus(ctx context.Context, state, name, desc,
 	return resp, nil
 }
 
-func (b BitbucketServer) createApiPath(rev string) string {
-	return fmt.Sprintf(bbServerEndPointTmpl, b.ContextPath, b.ProjectKey, b.RepositorySlug, rev)
+func (b BitbucketServer) createBuildPath(rev string) string {
+	return fmt.Sprintf(bbServerEndPointTmplBuilds, rev)
 }
 
-func parseBitbucketServerGitAddress(s string) (string, string, string, error) {
-	scheme := strings.Split(s, ":")[0]
-	if scheme != "http" && scheme != "https" {
-		return "", "", "", fmt.Errorf("could not parse git address: unsupported scheme type in address: %s. Must be http or https", scheme)
-	}
-
-	host, idWithContext, err := parseGitAddress(s)
+func parseBitbucketServerGitAddress(s string) (*url.URL, error) {
+	u, err := url.Parse(s)
 	if err != nil {
-		return "", "", "", fmt.Errorf("could not parse git address: %w", err)
+		return &url.URL{}, fmt.Errorf("could not parse git address: %w", err)
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return &url.URL{}, fmt.Errorf("could not parse git address: unsupported scheme type in address: %s. Must be http or https", u.Scheme)
 	}
 
-	idWithContext = "/" + idWithContext
+	idWithContext := strings.TrimSuffix(u.Path, ".git")
 
 	// /scm/ is always part of http/https clone urls : https://community.atlassian.com/t5/Bitbucket-questions/remote-url-in-Bitbucket-server-what-does-scm-represent-is-it/qaq-p/2060987
-	lastIndex := strings.LastIndex(idWithContext, "/scm/")
+	lastIndex := strings.LastIndex(idWithContext, bbServerSourceCodeMgmtString)
 	if lastIndex < 0 {
-		return "", "", "", fmt.Errorf("could not parse git address: supplied provider address is not http(s) git clone url")
+		return &url.URL{}, fmt.Errorf("could not parse git address: supplied provider address is not http(s) git clone url")
 	}
 
 	// Handle context scenarios --> https://confluence.atlassian.com/bitbucketserver/change-bitbucket-s-context-path-776640153.html
 	cntxtPath := idWithContext[:lastIndex] // Context path is anything that comes before last /scm/
 
-	id := idWithContext[lastIndex+5:] // Remove last `/scm/` from id as it's is not used in API calls
+	id := idWithContext[lastIndex+len(bbServerSourceCodeMgmtString):] // Remove last `/scm/` from id as it's is not used in API calls
 
-	return host, cntxtPath, id, nil
+	comp := strings.Split(id, "/")
+	if len(comp) != 2 {
+		return &url.URL{}, fmt.Errorf("could not parse git address: invalid repository id %q", id)
+	}
+	projectkey := comp[0]
+	reposlug := comp[1]
+
+	// Update the path till commits endpoint. The final builds endpoint would be added in Post function.
+	u.Path = fmt.Sprintf(bbServerEndPointCommits, cntxtPath, projectkey, reposlug)
+
+	return u, nil
 }
 
 func (b BitbucketServer) prepareCommonRequest(ctx context.Context, path string, body io.Reader, method string) (*retryablehttp.Request, error) {

@@ -38,10 +38,11 @@ func TestNewBitbucketServerBasicNoContext(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, b.Username, "dummyuser")
 	assert.Equal(t, b.Password, "testpassword")
-	assert.Equal(t, b.ContextPath, "")
-	assert.Equal(t, b.Host, "https://example.com:7990")
-	assert.Equal(t, b.ProjectKey, "projectfoo")
-	assert.Equal(t, b.RepositorySlug, "repobar")
+	//assert.Equal(t, b.ContextPath, "")
+	assert.Equal(t, b.Url.Scheme, "https")
+	assert.Equal(t, b.Url.Host, "example.com:7990")
+	//assert.Equal(t, b.ProjectKey, "projectfoo")
+	//assert.Equal(t, b.RepositorySlug, "repobar")
 }
 
 func TestNewBitbucketServerBasicWithContext(t *testing.T) {
@@ -49,54 +50,55 @@ func TestNewBitbucketServerBasicWithContext(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, b.Username, "dummyuser")
 	assert.Equal(t, b.Password, "testpassword")
-	assert.Equal(t, b.ContextPath, "/context")
-	assert.Equal(t, b.Host, "https://example.com:7990")
-	assert.Equal(t, b.ProjectKey, "projectfoo")
-	assert.Equal(t, b.RepositorySlug, "repobar")
+	//assert.Equal(t, b.ContextPath, "/context")
+	assert.Equal(t, b.Url.Scheme, "https")
+	assert.Equal(t, b.Url.Host, "example.com:7990")
+	//assert.Equal(t, b.ProjectKey, "projectfoo")
+	//assert.Equal(t, b.RepositorySlug, "repobar")
 }
 
-func TestApiPathNoContext(t *testing.T) {
+func TestBitbucketServerApiPathNoContext(t *testing.T) {
 	b, err := NewBitbucketServer("0c9c2e41-d2f9-4f9b-9c41-bebc1984d67a", "https://example.com:7990/scm/projectfoo/repobar.git", "", nil, "dummyuser", "testpassword")
 	assert.Nil(t, err)
-	u := b.Host + b.createApiPath("00151b98e303e19610378e6f1c49e31e5e80cd3b")
+	u := b.Url.JoinPath(b.createBuildPath("00151b98e303e19610378e6f1c49e31e5e80cd3b")).String()
 	assert.Equal(t, u, "https://example.com:7990/rest/api/latest/projects/projectfoo/repos/repobar/commits/00151b98e303e19610378e6f1c49e31e5e80cd3b/builds")
 }
 
-func TestApiPathOneWordContext(t *testing.T) {
+func TestBitbucketServerApiPathOneWordContext(t *testing.T) {
 	b, err := NewBitbucketServer("0c9c2e41-d2f9-4f9b-9c41-bebc1984d67a", "https://example.com:7990/context1/scm/projectfoo/repobar.git", "", nil, "dummyuser", "testpassword")
 	assert.Nil(t, err)
-	u := b.Host + b.createApiPath("00151b98e303e19610378e6f1c49e31e5e80cd3b")
+	u := b.Url.JoinPath(b.createBuildPath("00151b98e303e19610378e6f1c49e31e5e80cd3b")).String()
 	assert.Equal(t, u, "https://example.com:7990/context1/rest/api/latest/projects/projectfoo/repos/repobar/commits/00151b98e303e19610378e6f1c49e31e5e80cd3b/builds")
 }
 
-func TestApiPathMultipleWordContext(t *testing.T) {
+func TestBitbucketServerApiPathMultipleWordContext(t *testing.T) {
 	b, err := NewBitbucketServer("0c9c2e41-d2f9-4f9b-9c41-bebc1984d67a", "https://example.com:7990/context1/context2/context3/scm/projectfoo/repobar.git", "", nil, "dummyuser", "testpassword")
 	assert.Nil(t, err)
-	u := b.Host + b.createApiPath("00151b98e303e19610378e6f1c49e31e5e80cd3b")
+	u := b.Url.JoinPath(b.createBuildPath("00151b98e303e19610378e6f1c49e31e5e80cd3b")).String()
 	assert.Equal(t, u, "https://example.com:7990/context1/context2/context3/rest/api/latest/projects/projectfoo/repos/repobar/commits/00151b98e303e19610378e6f1c49e31e5e80cd3b/builds")
 }
 
-func TestApiPathOneWordScmInContext(t *testing.T) {
+func TestBitbucketServerApiPathOneWordScmInContext(t *testing.T) {
 	b, err := NewBitbucketServer("0c9c2e41-d2f9-4f9b-9c41-bebc1984d67a", "https://example.com:7990/scm/scm/projectfoo/repobar.git", "", nil, "dummyuser", "testpassword")
 	assert.Nil(t, err)
-	u := b.Host + b.createApiPath("00151b98e303e19610378e6f1c49e31e5e80cd3b")
+	u := b.Url.JoinPath(b.createBuildPath("00151b98e303e19610378e6f1c49e31e5e80cd3b")).String()
 	assert.Equal(t, u, "https://example.com:7990/scm/rest/api/latest/projects/projectfoo/repos/repobar/commits/00151b98e303e19610378e6f1c49e31e5e80cd3b/builds")
 }
 
-func TestApiPathMultipleWordScmInContext(t *testing.T) {
+func TestBitbucketServerApiPathMultipleWordScmInContext(t *testing.T) {
 	b, err := NewBitbucketServer("0c9c2e41-d2f9-4f9b-9c41-bebc1984d67a", "https://example.com:7990/scm/context2/scm/scm/projectfoo/repobar.git", "", nil, "dummyuser", "testpassword")
 	assert.Nil(t, err)
-	u := b.Host + b.createApiPath("00151b98e303e19610378e6f1c49e31e5e80cd3b")
+	u := b.Url.JoinPath(b.createBuildPath("00151b98e303e19610378e6f1c49e31e5e80cd3b")).String()
 	assert.Equal(t, u, "https://example.com:7990/scm/context2/scm/rest/api/latest/projects/projectfoo/repos/repobar/commits/00151b98e303e19610378e6f1c49e31e5e80cd3b/builds")
 }
 
-func TestApiPathScmAlreadyRemovedInInput(t *testing.T) {
+func TestBitbucketServerApiPathScmAlreadyRemovedInInput(t *testing.T) {
 	_, err := NewBitbucketServer("0c9c2e41-d2f9-4f9b-9c41-bebc1984d67a", "https://example.com:7990/context1/context2/context3/projectfoo/repobar.git", "", nil, "dummyuser", "testpassword")
 	assert.NotNil(t, err)
 	assert.Equal(t, err.Error(), "could not parse git address: supplied provider address is not http(s) git clone url")
 }
 
-func TestSshAddress(t *testing.T) {
+func TestBitbucketServerSshAddress(t *testing.T) {
 	_, err := NewBitbucketServer("0c9c2e41-d2f9-4f9b-9c41-bebc1984d67a", "ssh://git@mybitbucket:2222/ap/fluxcd-sandbox.git", "", nil, "", "")
 	assert.NotNil(t, err)
 	assert.Equal(t, err.Error(), "could not parse git address: unsupported scheme type in address: ssh. Must be http or https")
@@ -117,7 +119,7 @@ func TestNewBitbucketServerInvalidCreds(t *testing.T) {
 func TestNewBitbucketServerInvalidRepo(t *testing.T) {
 	_, err := NewBitbucketServer("0c9c2e41-d2f9-4f9b-9c41-bebc1984d67a", "https://example.com:7990/scm/projectfoo/repobar/invalid.git", "BBDC-ODIxODYxMzIyNzUyOttorMjO059P2rYTb6EH7mP", nil, "", "")
 	assert.NotNil(t, err)
-	assert.Equal(t, err.Error(), "invalid repository id \"projectfoo/repobar/invalid\"")
+	assert.Equal(t, err.Error(), "could not parse git address: invalid repository id \"projectfoo/repobar/invalid\"")
 }
 
 func TestPostBitbucketServerMissingRevision(t *testing.T) {
